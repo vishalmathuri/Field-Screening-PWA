@@ -1,0 +1,19 @@
+import assert from 'node:assert/strict';
+const base=process.env.SCREENING_TEST_URL||'http://127.0.0.1:8787';
+if(!['127.0.0.1','localhost'].includes(new URL(base).hostname))throw new Error('API smoke test only runs against local development.');
+const record={id:crypto.randomUUID(),participant:'DEMO-HTTP',age:42,location:'Demo Centre',worker:'FW-TEST',date:'2026-09-20',outcome:'Follow-up recommended',notes:'Synthetic automated local test',consent:true};
+async function api(method,body){return fetch(base+'/api/submissions',{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});}
+let response=await api('POST',record);assert.equal(response.status,201);assert.equal((await response.json()).record.id,record.id);
+response=await api('POST',record);assert.equal(response.status,201);
+response=await api('GET');assert.equal(response.status,200);assert.equal((await response.json()).records.filter(x=>x.id===record.id).length,1);
+response=await api('PATCH',{id:record.id,status:'Reviewed',reviewNote:'Checked in local test'});assert.equal(response.status,200);assert.equal((await response.json()).record.status,'Reviewed');
+response=await api('POST',record);assert.equal((await response.json()).record.status,'Reviewed');
+response=await api('POST',{...record,id:crypto.randomUUID(),consent:false});assert.equal(response.status,422);
+response=await api('POST',null);assert.equal(response.status,422);
+response=await api('PATCH',{id:record.id,status:'Invalid',reviewNote:''});assert.equal(response.status,422);
+response=await fetch(base+'/api/submissions',{method:'POST',headers:{'Content-Type':'application/json'},body:'broken JSON'});assert.equal(response.status,400);
+response=await fetch(base+'/api/submissions',{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://other.test'},body:JSON.stringify(record)});assert.equal(response.status,403);
+response=await fetch(base+'/');assert.equal(response.status,200);assert.match(await response.text(),/New screening/);
+response=await fetch(base+'/manifest.webmanifest');assert.equal(response.status,200);assert.equal((await response.json()).display,'standalone');
+response=await fetch(base+'/sw.js');assert.equal(response.status,200);assert.match(await response.text(),/BUILD_ASSETS=\["/);
+console.log('PASS: real HTTP create, retry, review, validation, origin, app shell, manifest and precache checks');
