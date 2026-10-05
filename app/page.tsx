@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ClipboardList,
   CloudUpload,
@@ -15,46 +15,34 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import {
-  validateRecord,
-  drainQueue,
-  type Screening,
-  type QueueItem,
-} from "@/lib/screening.mjs";
-import * as device from "@/lib/device";
+import { useScreeningDrafts } from "@/hooks/useScreeningDrafts";
+import { useSubmissionSync } from "@/hooks/useSubmissionSync";
 import ScreeningForm from "@/components/screening/ScreeningForm";
 import DeviceQueue from "@/components/screening/DeviceQueue";
 import ReviewDashboard, { ReviewDetails } from "@/components/screening/ReviewDashboard";
-import { Badge, today } from "@/components/screening/shared";
+import { Badge } from "@/components/screening/shared";
 import type { Submission } from "@/components/screening/types";
 
 
-function blank(): Screening {
-  return {
-    id: crypto.randomUUID(),
-    participant: "",
-    age: "",
-    worker: "",
-    location: "",
-    date: today(),
-    outcome: "",
-    notes: "",
-    consent: false,
-  };
-}
-
 export default function Home() {
   const [tab, setTab] = useState("screening");
-  const [online, setOnline] = useState(true);
-  const [ready, setReady] = useState(false);
-  const [form, setForm] = useState<Screening | null>(null);
-  const [draftList, setDraftList] = useState<device.Draft[]>([]);
-  const [queueList, setQueueList] = useState<QueueItem[]>([]);
-  const [saveStatus, setSaveStatus] = useState("Not started");
-  const [storageError, setStorageError] = useState("");
-  const [fields, setFields] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const {
+    ready,
+    form,
+    draftList,
+    queueList,
+    saveStatus,
+    storageError,
+    fields,
+    busy,
+    setStorageError,
+    refreshDevice,
+    change,
+    newForm,
+    resume,
+    correct,
+    submit: queueSubmission,
+  } = useScreeningDrafts(() => setTab("screening"));
   const [records, setRecords] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
@@ -66,15 +54,6 @@ export default function Home() {
   const [reviewError, setReviewError] = useState("");
   const [offlineReady, setOfflineReady] = useState(false);
   const [install, setInstall] = useState<any>(null);
-  // Serialize draft saves so rapid typing cannot overwrite a newer draft.
-  const saveChain = useRef(Promise.resolve());
-  const syncingRef = useRef(false);
-  const current = useRef<Screening | null>(null);
-  const refreshDevice = useCallback(async () => {
-    const [d, q] = await Promise.all([device.drafts(), device.queue()]);
-    setDraftList(d.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
-    setQueueList(q);
-  }, []);
   const loadRecords = useCallback(async () => {
     setLoading(true);
     setApiError("");
@@ -99,91 +78,14 @@ export default function Home() {
       setLoading(false);
     }
   }, []);
-  const sync = useCallback(async () => {
-    if (syncingRef.current || !navigator.onLine) return;
-    syncingRef.current = true;
-    setSyncing(true);
-    try {
-      const run = async () =>
-        drainQueue(await device.queue(), {
-          send: async (record) => {
-            const res = await fetch("/api/submissions", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(record),
-              signal: AbortSignal.timeout(12000),
-            });
-            const data = (await res.json()) as {
-              error?: string;
-              records: Submission[];
-              record: Submission;
-            };
-            if (!res.ok) {
-              const e = new Error(
-                data.error || "Server unavailable. Retry shortly.",
-              ) as Error & { permanent?: boolean };
-              e.permanent = [400, 409, 413, 422].includes(res.status);
-              throw e;
-            }
-            return { id: data.record.id };
-          },
-          save: device.saveQueue,
-          notify: () => {
-            void refreshDevice().catch((e) => setStorageError(e.message));
-          },
-        });
-      const sent = navigator.locks
-        ? await navigator.locks.request("field-screening-sync", run)
-        : await run();
-      await refreshDevice();
-      if (sent) {
-        toast.success(`${sent} ${sent === 1 ? "record" : "records"} synced`);
-        void loadRecords();
-      }
-    } catch (e) {
-      setStorageError(
-        e instanceof Error ? e.message : "Could not read the device queue.",
-      );
-    } finally {
-      syncingRef.current = false;
-      setSyncing(false);
-    }
-  }, [refreshDevice, loadRecords]);
+  const { online, syncing, sync } = useSubmissionSync({
+    ready, refreshDevice, loadRecords, setStorageError,
+  });
   useEffect(() => {
-    setOnline(navigator.onLine);
-    let active = true;
-    Promise.all([device.drafts(), device.queue()])
-      .then(([d, q]) => {
-        if (!active) return;
-        d.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-        setDraftList(d);
-        setQueueList(q);
-        const first = d[0]?.record ?? blank();
-        current.current = first;
-        setForm(first);
-        setSaveStatus(d.length ? "Saved on this device" : "Not started");
-        setReady(true);
-        void sync();
-      })
-      .catch((e) => {
-        setStorageError(e.message);
-        setReady(true);
-        const f = blank();
-        current.current = f;
-        setForm(f);
-      });
     void loadRecords();
-    const connected = () => {
-      setOnline(true);
-      void sync();
-      void loadRecords();
-    };
-    const disconnected = () => setOnline(false);
-    window.addEventListener("online", connected);
-    window.addEventListener("offline", disconnected);
-    const interval = setInterval(() => {
-      if (navigator.onLine) void sync();
-    }, 30000);
+  }, [loadRecords]);
+
+  useEffect(() => {
     const installHandler = (e: Event) => {
       e.preventDefault();
       setInstall(e);
@@ -214,14 +116,10 @@ export default function Home() {
     };
     navigator.serviceWorker?.addEventListener("message", swMessage);
     return () => {
-      active = false;
-      clearInterval(interval);
-      window.removeEventListener("online", connected);
-      window.removeEventListener("offline", disconnected);
       window.removeEventListener("beforeinstallprompt", installHandler);
       navigator.serviceWorker?.removeEventListener("message", swMessage);
     };
-  }, [sync, loadRecords]);
+  }, []);
   // Expose only view navigation; completing records still uses the visible form.
   useEffect(() => {
     const context = (document as any).modelContext;
@@ -263,77 +161,8 @@ export default function Home() {
     } catch { }
     return () => lifecycle.abort();
   }, []);
-  function change(key: keyof Screening, value: string | boolean) {
-    if (!current.current) return;
-    const next = { ...current.current, [key]: value };
-    current.current = next;
-    setForm(next);
-    setFields((p) => ({ ...p, [key]: "" }));
-    setSaveStatus("Saving…");
-    saveChain.current = saveChain.current
-      .catch(() => { })
-      .then(async () => {
-        await device.saveDraft({
-          id: next.id,
-          record: next,
-          updatedAt: new Date().toISOString(),
-        });
-        setStorageError("");
-        setSaveStatus("Saved on this device");
-        await refreshDevice();
-      })
-      .catch((e) => {
-        setSaveStatus("Not saved");
-        setStorageError(e.message);
-      });
-  }
-  async function newForm() {
-    await saveChain.current;
-    const next = blank();
-    current.current = next;
-    setForm(next);
-    setFields({});
-    setSaveStatus("Not started");
-    setTab("screening");
-  }
-  async function resume(d: device.Draft) {
-    await saveChain.current;
-    current.current = d.record;
-    setForm(d.record);
-    setFields({});
-    setSaveStatus("Saved on this device");
-    setTab("screening");
-  }
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!current.current) return;
-    setBusy(true);
-    try {
-      const raw = current.current;
-      if (raw.date > today()) {
-        setFields({ date: "Screening date cannot be in the future." });
-        throw new Error("Check the highlighted fields.");
-      }
-      const clean = validateRecord(raw);
-      await saveChain.current;
-      // Draft removal and queue insertion commit in one IndexedDB transaction.
-      await device.submitDraft(clean);
-      setStorageError("");
-      await refreshDevice();
-      await newForm();
-      toast.success(
-        navigator.onLine
-          ? "Record queued. Syncing now."
-          : "Record queued on this device.",
-      );
-      void sync();
-    } catch (e) {
-      const err = e as Error & { fields?: Record<string, string> };
-      if (err.fields) setFields(err.fields);
-      toast.error(err.message);
-    } finally {
-      setBusy(false);
-    }
+  async function submit(event: React.FormEvent) {
+    if (await queueSubmission(event)) void sync();
   }
   function openReview(record: Submission) {
     setSelected(record);
@@ -374,20 +203,6 @@ export default function Home() {
       );
     } finally {
       setReviewBusy(false);
-    }
-  }
-  async function correct(item: QueueItem) {
-    try {
-      await saveChain.current;
-      await device.editBlocked(item);
-      await refreshDevice();
-      await resume({
-        id: item.id,
-        record: item.record,
-        updatedAt: new Date().toISOString(),
-      });
-    } catch (e) {
-      toast.error((e as Error).message);
     }
   }
   const waiting = queueList.filter((x) => x.state !== "synced"),

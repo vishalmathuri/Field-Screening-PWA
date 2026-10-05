@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 const base=process.env.SCREENING_TEST_URL||'http://127.0.0.1:8787';
 if(!['127.0.0.1','localhost'].includes(new URL(base).hostname))throw new Error('API smoke test only runs against local development.');
-const record={id:crypto.randomUUID(),participant:'DEMO-HTTP',age:42,location:'Demo Centre',worker:'FW-TEST',date:'2026-09-20',outcome:'Follow-up recommended',notes:'Synthetic automated local test',consent:true};
+const testId=crypto.randomUUID();
+const record={id:testId,participant:`DEMO-HTTP-${testId.slice(0,8)}`,age:42,location:'Demo Centre',worker:'FW-TEST',date:'2026-09-20',outcome:'Follow-up recommended',notes:'Synthetic automated local test',consent:true};
 async function api(method,body){return fetch(base+'/api/submissions',{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});}
 let response=await api('POST',record);assert.equal(response.status,201);assert.equal((await response.json()).record.id,record.id);
 response=await api('POST',record);assert.equal(response.status,201);
