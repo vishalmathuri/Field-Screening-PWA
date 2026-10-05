@@ -143,15 +143,14 @@ Review statuses are `Pending review`, `Reviewed`, and `Needs follow-up`. Errors 
 
 ## Screenshots
 
-Capture the three views using fictional records and save the images under `docs/screenshots/`:
+### Screening form
+![Screening form](docs/screenshots/screening-form.png)
 
-| View | Suggested filename |
-| --- | --- |
-| Screening form | `screening-form.png` |
-| Device queue | `device-queue.png` |
-| Review dashboard | `review-dashboard.png` |
+### Device queue
+![Device queue](docs/screenshots/device-queue.png)
 
-Add the screenshots to this section after those files exist. Include a mobile view to show the responsive layout.
+### Review dashboard
+![Review dashboard](docs/screenshots/review-dashboard.png)
 
 ## Limitations
 
