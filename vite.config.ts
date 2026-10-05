@@ -5,8 +5,8 @@ import { readExecutionProfile } from "./scripts/execution-profile.mjs";
 import { sites } from "./build/sites-vite-plugin";
 import { connectorPreview } from "./build/connector-preview-plugin.mjs";
 
-const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
-  "00000000-0000-4000-8000-000000000000";
+const FIELD_SCREENING_DATABASE_ID =
+  "0911eb5a-de48-4be0-beec-21a9799ca157";
 
 const { d1, r2 } = hostingConfig;
 
@@ -20,9 +20,10 @@ const localBindingConfig = {
   d1_databases: d1
     ? [
         {
-          binding: d1,
-          database_name: "site-creator-d1",
-          database_id: SITE_CREATOR_PLACEHOLDER_DATABASE_ID,
+          binding: "DB",
+          database_name: "field-screening-db",
+          database_id: FIELD_SCREENING_DATABASE_ID,
+        
         },
       ]
     : [],

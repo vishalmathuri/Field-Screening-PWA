@@ -2,7 +2,13 @@
 
 A mobile-friendly screening app for collecting records when internet access is unreliable. Field workers can save drafts on their device, submit records offline, and see whether each record is waiting, needs a retry, or has synced. A dashboard lets users review submitted records and save review decisions.
 
-This portfolio project uses fictional data. Screening outcomes are selected manually; the app does not calculate clinical scores or diagnoses. The hosted demo is private, and the collector and reviewer screens share the same authorized access.
+This portfolio project uses fictional data. Screening outcomes are selected manually; the app does not calculate clinical scores or diagnoses. The hosted demo is public; visitors can submit fictional records and save review decisions. Collector and reviewer views do not have separate accounts or role permissions.
+
+## Live demo
+
+[Open Field Screening PWA](https://field-screening-pwa.vishalmathuri.workers.dev)
+
+Hosted on Cloudflare Workers with a Cloudflare D1 database. Use fictional data only. Offline use requires an initial online visit and completed caching; synchronization runs while the app is open.
 
 ## Features
 
@@ -144,12 +150,24 @@ Review statuses are `Pending review`, `Reviewed`, and `Needs follow-up`. Errors 
 ## Screenshots
 
 ### Screening form
+<<<<<<< HEAD
 ![Screening form](docs/screenshots/screening-form.png)
 
 ### Device queue
 ![Device queue](docs/screenshots/device-queue.png)
 
 ### Review dashboard
+=======
+
+![Screening form](docs/screenshots/screening-form.png)
+
+### Device queue
+
+![Device queue](docs/screenshots/device-queue.png)
+
+### Review dashboard
+
+>>>>>>> 7041616 (Add live demo and Cloudflare deployment configuration)
 ![Review dashboard](docs/screenshots/review-dashboard.png)
 
 ## Limitations
