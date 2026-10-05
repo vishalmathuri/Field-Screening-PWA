@@ -150,7 +150,6 @@ Review statuses are `Pending review`, `Reviewed`, and `Needs follow-up`. Errors 
 ## Screenshots
 
 ### Screening form
-<<<<<<< HEAD
 ![Screening form](docs/screenshots/screening-form.png)
 
 ### Device queue
@@ -161,14 +160,6 @@ Review statuses are `Pending review`, `Reviewed`, and `Needs follow-up`. Errors 
 
 ![Screening form](docs/screenshots/screening-form.png)
 
-### Device queue
-
-![Device queue](docs/screenshots/device-queue.png)
-
-### Review dashboard
-
->>>>>>> 7041616 (Add live demo and Cloudflare deployment configuration)
-![Review dashboard](docs/screenshots/review-dashboard.png)
 
 ## Limitations
 
