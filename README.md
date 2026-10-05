@@ -156,7 +156,6 @@ Review statuses are `Pending review`, `Reviewed`, and `Needs follow-up`. Errors 
 ![Device queue](docs/screenshots/device-queue.png)
 
 ### Review dashboard
-=======
 
 ![Screening form](docs/screenshots/screening-form.png)
 
